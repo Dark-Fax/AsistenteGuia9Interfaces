@@ -587,29 +587,20 @@
             if (e.key === 'Enter') sendText();
         });
 
-        // --- Cartesia TTS via Netlify proxy ---
-        let currentAudio = null;
-
-        async function speak(text) {
-            try {
-                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-                log('TTS →', text.substring(0, 50));
-                const res = await fetch('/.netlify/functions/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-                log('TTS status →', res.status);
-                if (!res.ok) { err('TTS falló:', await res.text()); return; }
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                currentAudio = new Audio(url);
-                currentAudio.play();
-                currentAudio.onended = () => URL.revokeObjectURL(url);
-            } catch(e) {
-                err('TTS error:', e);
-            }
+        // --- TTS: speechSynthesis ---
+        function speak(text) {
+            if (!('speechSynthesis' in window)) return;
+            speechSynthesis.cancel();
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.lang = 'es-CO';
+            utt.rate = 1.0;
+            utt.pitch = 1.0;
+            const voices = speechSynthesis.getVoices();
+            const voz = voices.find(v => v.lang.startsWith('es')) || null;
+            if (voz) utt.voice = voz;
+            speechSynthesis.speak(utt);
         }
+        if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
 
         // --- Mic ---
         function toggleMic() {
